@@ -51,10 +51,23 @@ jobs:
         env:
           NODE_ENV: production
       
+      - name: Verify build output
+        run: |
+          cd vamos
+          echo "Build completed successfully"
+          echo "Build output directory contents:"
+          ls -la dist/
+          echo "Total size of build:"
+          du -sh dist/
+      
       - name: Prepare deployment structure
         run: |
           mkdir -p pages-root/vamos
           cp -r vamos/dist/* pages-root/vamos/
+          
+          # Create .nojekyll to bypass Jekyll processing
+          touch pages-root/.nojekyll
+          
           # Create a root index.html that redirects to /vamos/
           cat > pages-root/index.html << 'EOF'
           <!DOCTYPE html>
@@ -69,6 +82,24 @@ jobs:
           </head>
           <body>
             <p>Redirecting to <a href="/vamos/">Vamos</a>...</p>
+          </body>
+          </html>
+          EOF
+          
+          # Create 404.html for SPA fallback routing
+          cat > pages-root/404.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Page Not Found</title>
+            <script>
+              // Redirect 404s to the Vamos app to handle client-side routing
+              window.location.href = '/vamos/';
+            </script>
+          </head>
+          <body>
+            <p>Page not found. Redirecting to <a href="/vamos/">Vamos</a>...</p>
           </body>
           </html>
           EOF
