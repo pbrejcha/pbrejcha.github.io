@@ -1,0 +1,86 @@
+name: Deploy Vamos to GitHub Pages
+
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+  
+  # Optionally run on push to main branch (uncomment if needed)
+  # push:
+  #   branches: [ main ]
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued while a run is in progress
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Vamos repository
+        uses: actions/checkout@v4
+        with:
+          repository: pbrejcha/vamos
+          path: vamos
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: vamos/package-lock.json
+      
+      - name: Install dependencies
+        run: |
+          cd vamos
+          npm ci
+      
+      - name: Build application
+        run: |
+          cd vamos
+          npm run build
+        env:
+          NODE_ENV: production
+      
+      - name: Prepare deployment structure
+        run: |
+          mkdir -p pages-root/vamos
+          cp -r vamos/dist/* pages-root/vamos/
+          # Create a root index.html that redirects to /vamos/
+          cat > pages-root/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Redirecting...</title>
+            <meta http-equiv="refresh" content="0; url=/vamos/">
+            <script>
+              window.location.href = '/vamos/';
+            </script>
+          </head>
+          <body>
+            <p>Redirecting to <a href="/vamos/">Vamos</a>...</p>
+          </body>
+          </html>
+          EOF
+      
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages-root
+      
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
